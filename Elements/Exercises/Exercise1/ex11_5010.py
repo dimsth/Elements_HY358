@@ -94,12 +94,10 @@ def addSphereToScene(name, position, colorArray):
     trans = scene.world.addComponent(node, BasicTransform(name=name + "_trans", trs=util.translate(*position)))
     mesh = scene.world.addComponent(node, RenderMesh(name=name + "_mesh"))
     
-    # Add vertex data (vertices, colors, indices)
     mesh.vertex_attributes.append(vertexSphere)
     mesh.vertex_attributes.append(colorArray)
     mesh.vertex_index.append(indexSphere)
     
-    # Add vertex array and shader
     vArray = scene.world.addComponent(node, VertexArray())
     shaderDec = scene.world.addComponent(node, ShaderGLDecorator(Shader(vertex_source = Shader.COLOR_VERT_MVP, fragment_source = Shader.COLOR_FRAG)))
     
