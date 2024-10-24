@@ -221,15 +221,29 @@ while running:
     CheckBoxGUI()
     view =  gWindow._myCamera
 
-    spheres[0][2].init() 
+    spheres[0][2].update() 
     mvp_sphere = projMat @ view @ model_sphere[0]
     spheres[0][3].setUniformVariable(key='modelViewProj', value=mvp_sphere, mat4=True)
 
+    for i in range(1, 5):
+        spheres[i][2].init()
+        mvp_sphere = projMat @ view @ model_sphere[i]
+        spheres[i][3].setUniformVariable(key='modelViewProj', value=mvp_sphere, mat4=True)
+
+    sphere_visibility = [True] * 5
+
     if fiveSpheresCB:
         for i in range(1, 5):
-            spheres[i][2].init()
-            mvp_sphere = projMat @ view @ model_sphere[i]
-            spheres[i][3].setUniformVariable(key='modelViewProj', value=mvp_sphere, mat4=True)
+            if not sphere_visibility[i]:
+                spheres[i][3].enableShader()
+                sphere_visibility[i] = True
+
+    else:
+        for i in range(1, 5):
+            if sphere_visibility[i]: 
+                spheres[i][3].disableShader()  
+                sphere_visibility[i] = False
+
 
     scene.render_post()
     
