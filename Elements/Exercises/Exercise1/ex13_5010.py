@@ -6,20 +6,18 @@ from Elements.pyECSS.Component import BasicTransform, Camera, RenderMesh
 from Elements.pyECSS.System import  TransformSystem, CameraSystem
 from Elements.pyGLV.GL.Scene import Scene
 from Elements.pyGLV.GUI.Viewer import RenderGLStateSystem, ImGUIecssDecorator
-
+from OpenGL.GL import GL_POINTS, GL_LINES, GL_TRIANGLES
 from Elements.pyGLV.GL.Shader import InitGLShaderSystem, Shader, ShaderGLDecorator, RenderGLShaderSystem
 from Elements.pyGLV.GL.VertexArray import VertexArray
 
 from Elements.utils.terrain import generateTerrain
 
-from OpenGL.GL import GL_LINES
-
 from Elements.utils.Shortcuts import displayGUI_text
 example_description = \
 "This is a scene with a trinagle, 2 lines and 3 points." 
 
-winWidth = 1024
-winHeight = 768
+winWidth = 1920
+winHeight = 1080
 
 scene = Scene()    
 
@@ -39,7 +37,6 @@ m = np.linalg.inv(projMat @ view)
 entityCam2 = scene.world.createEntity(Entity(name="entityCam2"))
 scene.world.addEntityChild(entityCam1, entityCam2)
 trans2 = scene.world.addComponent(entityCam2, BasicTransform(name="trans2", trs=util.identity()))
-# orthoCam = scene.world.addComponent(entityCam2, Camera(util.ortho(-100.0, 100.0, -100.0, 100.0, 1.0, 100.0), "orthoCam","Camera","500"))
 orthoCam = scene.world.addComponent(entityCam2, Camera(m, "orthoCam","Camera","500"))
 
 # a simple triangle
@@ -55,12 +52,12 @@ colorVertexData = np.array([
 ], dtype=np.float32)
 
 vertexLine1 = np.array([
-    [0.5, 1.0, 0.5],
-    [0.5, 2.0, 1.0]
+    [0.5, 1.0, 0.5, 1.0],
+    [0.5, 2.0, 1.0, 1.0]
 ], dtype=np.float32)
 vertexLine2 = np.array([
-    [1.0, 1.0, -0.5],
-    [-0.5, 0.5, 0.75]
+    [1.0, 1.0, -0.5, 1.0],
+    [-0.5, 0.5, 0.75, 1.0]
 ], dtype=np.float32)
 colorLines = np.array([
     [0.0, 0.0, 1.0, 1.0],
@@ -69,13 +66,13 @@ colorLines = np.array([
 
 
 vertexPoint1 = np.array([
-    [0.75, 2.0, 1.2]
+    [0.75, 2.0, 1.2, 1.0]
 ], dtype=np.float32)
 vertexPoint2 = np.array([
-    [-1.5, 0.75, 0.5]
+    [-1.5, 0.75, 0.5, 1.0]
 ], dtype=np.float32)
 vertexPoint3 = np.array([
-    [-0.25, 0.5, 0.35]
+    [-0.25, 0.5, 0.35, 1.0]
 ], dtype=np.float32)
 colorPoints = np.array([
     [0.0, 1.0, 1.0, 1.0]
@@ -86,7 +83,7 @@ indexTri = np.array((0,1,2), np.uint32)
 indexLines = np.array((0,1,0), np.uint32)
 indexPoints = np.array((0,0,0), np.uint32)
 
-def addObjectToScene(name, position, index, colorArray):
+def addObjectToScene(name, position, index, colorArray, primitive=GL_LINES):
     node = scene.world.createEntity(Entity(name=name))
     scene.world.addEntityChild(rootEntity, node)
     trans = scene.world.addComponent(node, BasicTransform(name=name + "_trans", trs=util.translate(0,0.5,0)))
@@ -96,7 +93,7 @@ def addObjectToScene(name, position, index, colorArray):
     mesh.vertex_attributes.append(colorArray)
     mesh.vertex_index.append(index)
     
-    vArray = scene.world.addComponent(node, VertexArray())
+    vArray = scene.world.addComponent(node, VertexArray(primitive=primitive))
     shaderDec = scene.world.addComponent(node, ShaderGLDecorator(Shader(vertex_source = Shader.COLOR_VERT_MVP, fragment_source = Shader.COLOR_FRAG)))
     
     return node, trans, vArray, shaderDec, mesh
@@ -110,12 +107,17 @@ initUpdate = scene.world.createSystem(InitGLShaderSystem())
 
 ## ADD OBJECTS ##
 
-line1, trans_l1, vArray_l1, shaderDec_l1, mesh_l1 = addObjectToScene("line1", vertexLine1, indexLines, colorLines)
-line2, trans_l2, vArray_l2, shaderDec_l2, mesh_l2 = addObjectToScene("line2", vertexLine2, indexLines, colorLines)
-tringle, trans_tri, vArray_tri, shaderDec_tri, mesh_tri = addObjectToScene("triangle", vertexData, indexTri, colorVertexData)
-point1, trans_p1, vArray_p1, shaderDec_p1, mesh_p1 = addObjectToScene("point1", vertexPoint1, indexPoints, colorPoints)
-point2, trans_p2, vArray_p2, shaderDec_p2, mesh_p2 = addObjectToScene("point2", vertexPoint2, indexPoints, colorPoints)
-point3, trans_p3, vArray_p3, shaderDec_p3, mesh_p3 = addObjectToScene("point3", vertexPoint3, indexPoints, colorPoints)
+# Add lines with the GL_LINES primitive
+line1, trans_l1, vArray_l1, shaderDec_l1, mesh_l1 = addObjectToScene("line1", vertexLine1, indexLines, colorLines, primitive=GL_LINES)
+line2, trans_l2, vArray_l2, shaderDec_l2, mesh_l2 = addObjectToScene("line2", vertexLine2, indexLines, colorLines, primitive=GL_LINES)
+
+# Add points with the GL_POINTS primitive
+point1, trans_p1, vArray_p1, shaderDec_p1, mesh_p1 = addObjectToScene("point1", vertexPoint1, indexPoints, colorPoints, primitive=GL_POINTS)
+point2, trans_p2, vArray_p2, shaderDec_p2, mesh_p2 = addObjectToScene("point2", vertexPoint2, indexPoints, colorPoints, primitive=GL_POINTS)
+point3, trans_p3, vArray_p3, shaderDec_p3, mesh_p3 = addObjectToScene("point3", vertexPoint3, indexPoints, colorPoints, primitive=GL_POINTS)
+
+# Triangle stays the same with GL_TRIANGLES primitive
+triangle, trans_tri, vArray_tri, shaderDec_tri, mesh_tri = addObjectToScene("triangle", vertexData, indexTri, colorVertexData, primitive=GL_TRIANGLES)
 
 
 # Generate terrain
@@ -141,6 +143,13 @@ scene.world.traverse_visit(initUpdate, scene.world.root)
 
 ################### EVENT MANAGER ###################
 
+eye = util.vec(2.5, 2.5, 2.5)
+target = util.vec(0.0, 0.0, 0.0)
+up = util.vec(0.0, 1.0, 0.0)
+view = util.lookat(eye, target, up)
+
+projMat = util.perspective(50.0, 1.0, 0.01, 10.0)
+
 eManager = scene.world.eventManager
 gWindow = scene.renderWindow
 gGUI = scene.gContext
@@ -153,57 +162,38 @@ eManager._actuators['OnUpdateWireframe'] = renderGLEventActuator
 eManager._subscribers['OnUpdateCamera'] = gWindow 
 eManager._actuators['OnUpdateCamera'] = renderGLEventActuator
 
-def Objectsscreen():
-    imgui.begin("Objects")
-    if imgui.begin_tab_bar("MyTabBar"):
+def calculate_transformations(vertices, model_matrix):
+    obj_space = vertices
 
-        if imgui.begin_tab_item("Triangle").selected:
-            imgui.text("Object Space\n\n")
-
-            imgui.text("___________________________________\n\n\nWorld Space\n\n")
-
-            imgui.text("___________________________________\n\n\nEye Space\n\n")
-
-            imgui.text("___________________________________\n\n\nClip Space\n\n")
-
-            imgui.text("___________________________________\n\n\nNormaliza Space\n\n")
-
-            imgui.text("___________________________________\n\n\nWindow Space\n\n")
-
-            imgui.end_tab_item()
-
-        if imgui.begin_tab_item("Line1").selected:
-            imgui.text("Object Space")
-          
-            imgui.end_tab_item()
-
-        if imgui.begin_tab_item("Line2").selected:
-          
-            imgui.end_tab_item()
-
-        if imgui.begin_tab_item("Point1").selected:
-          
-            imgui.end_tab_item()
-
-        if imgui.begin_tab_item("Point2").selected:
-          
-            imgui.end_tab_item()
-
-        if imgui.begin_tab_item("Point3").selected:
-          
-            imgui.end_tab_item()
-
-    imgui.end_tab_bar()
-
-    imgui.end()
+    world_space = np.dot(model_matrix, obj_space.T).T
 
 
-eye = util.vec(2.5, 2.5, 2.5)
-target = util.vec(0.0, 0.0, 0.0)
-up = util.vec(0.0, 1.0, 0.0)
-view = util.lookat(eye, target, up)
+    eye_space = np.dot(view, world_space.T).T
 
-projMat = util.perspective(50.0, 1.0, 0.01, 10.0)
+
+    clip_space = np.dot(projMat, eye_space.T).T
+
+
+    ndc_space = clip_space[:, :3] / clip_space[:, 3][:, np.newaxis]
+
+
+    window_space = np.zeros_like(ndc_space)
+    window_space[:, 0] = (ndc_space[:, 0] * 0.5 + 0.5) * winWidth  # x
+    window_space[:, 1] = (ndc_space[:, 1] * 0.5 + 0.5) * winHeight  # y
+    window_space[:, 2] = (ndc_space[:, 2] * 0.5 + 0.5)  # z (depth)
+
+    result = ""
+
+    # Format the data into a readable string
+    result += "Object Space\n\n" + str(obj_space) + "\n"
+    result += "___________________________________\n\n\nWorld Space\n\n" + str(world_space) + "\n"
+    result += "___________________________________\n\n\nEye Space\n\n" + str(eye_space) + "\n"
+    result += "___________________________________\n\n\nClip Space\n\n" + str(clip_space) + "\n"
+    result += "___________________________________\n\n\nNormaliza Space\n\n" + str(ndc_space) + "\n"
+    result += "___________________________________\n\n\nWindow Space\n\n" + str(window_space)
+
+    return result
+
 gWindow._myCamera = view
 model_terrain = terrain.getChild(0).trs
 
@@ -213,6 +203,44 @@ model_l2 = trans_l2.trs
 model_p1 = trans_p1.trs
 model_p2 = trans_p2.trs
 model_p3 = trans_p3.trs
+
+def Objectsscreen():
+    imgui.begin("Objects")
+    if imgui.begin_tab_bar("MyTabBar"):
+
+        if imgui.begin_tab_item("Triangle").selected:
+            imgui.text(calculate_transformations(vertexData, model_tri))
+            imgui.end_tab_item()
+
+        if imgui.begin_tab_item("Line1").selected:
+            imgui.text(calculate_transformations(vertexLine1, model_l1))
+          
+            imgui.end_tab_item()
+
+        if imgui.begin_tab_item("Line2").selected:
+            imgui.text(calculate_transformations(vertexLine2, model_l2))
+
+            imgui.end_tab_item()
+
+        if imgui.begin_tab_item("Point1").selected:
+            imgui.text(calculate_transformations(vertexPoint1, model_p1))
+          
+            imgui.end_tab_item()
+
+        if imgui.begin_tab_item("Point2").selected:
+            imgui.text(calculate_transformations(vertexPoint2, model_p2))
+          
+            imgui.end_tab_item()
+
+        if imgui.begin_tab_item("Point3").selected:
+            imgui.text(calculate_transformations(vertexPoint3, model_p3))
+          
+            imgui.end_tab_item()
+
+    imgui.end_tab_bar()
+
+    imgui.end()
+
 
 while running:
     running = scene.render()

@@ -18,8 +18,8 @@ from Elements.utils.Shortcuts import displayGUI_text
 example_description = \
 "This is a scene with a sphere." 
 
-winWidth = 1024
-winHeight = 768
+winWidth = 1920
+winHeight = 1080
 
 scene = Scene()    
 
@@ -119,12 +119,6 @@ spheres = [
     addSphereToScene("sphere5", positions[4], normalColorSphere)
 ]
 
-# mesh4.vertex_attributes.append(vertexSphere)
-# mesh4.vertex_attributes.append(whiteColorSphere)
-# mesh4.vertex_index.append(indexSphere)
-# vArray4 = scene.world.addComponent(node4, VertexArray())
-# shaderDec4 = scene.world.addComponent(node4, ShaderGLDecorator(Shader(vertex_source = Shader.COLOR_VERT_MVP, fragment_source=Shader.COLOR_FRAG)))
-
 # Systems
 transUpdate = scene.world.createSystem(TransformSystem("transUpdate", "TransformSystem", "001"))
 camUpdate = scene.world.createSystem(CameraSystem("camUpdate", "CameraUpdate", "200"))
@@ -199,7 +193,14 @@ def CheckBoxGUI():
 
     if imgui.checkbox("Five Spheres", fiveSpheresCB)[0]:
         fiveSpheresCB = not fiveSpheresCB
-        ChangeScene()
+        if fiveSpheresCB:
+            for i in range(1, 5):
+                rootEntity.add(spheres[i][0])
+
+        else:
+            for i in range(1, 5):
+                rootEntity.remove(spheres[i][0])
+
 
     imgui.end()
 
@@ -211,6 +212,9 @@ model_sphere = [
     spheres[4][1].trs
 ]
 
+for i in range(1, 5):
+    rootEntity.remove(spheres[i][0])
+
 while running:
     running = scene.render()
     displayGUI_text(example_description)
@@ -221,29 +225,10 @@ while running:
     CheckBoxGUI()
     view =  gWindow._myCamera
 
-    spheres[0][2].update() 
-    mvp_sphere = projMat @ view @ model_sphere[0]
-    spheres[0][3].setUniformVariable(key='modelViewProj', value=mvp_sphere, mat4=True)
-
-    for i in range(1, 5):
-        spheres[i][2].init()
+    spheres[0][2].init() 
+    for i in range(0, 5):
         mvp_sphere = projMat @ view @ model_sphere[i]
         spheres[i][3].setUniformVariable(key='modelViewProj', value=mvp_sphere, mat4=True)
-
-    sphere_visibility = [True] * 5
-
-    if fiveSpheresCB:
-        for i in range(1, 5):
-            if not sphere_visibility[i]:
-                spheres[i][3].enableShader()
-                sphere_visibility[i] = True
-
-    else:
-        for i in range(1, 5):
-            if sphere_visibility[i]: 
-                spheres[i][3].disableShader()  
-                sphere_visibility[i] = False
-
 
     scene.render_post()
     
