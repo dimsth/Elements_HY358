@@ -10,7 +10,7 @@ from Elements.pyGLV.GUI.Viewer import RenderGLStateSystem, ImGUIecssDecorator
 from Elements.pyGLV.GL.Shader import InitGLShaderSystem, Shader, ShaderGLDecorator, RenderGLShaderSystem
 from Elements.pyGLV.GL.VertexArray import VertexArray
 import Elements.utils.normals as norm
-from Elements.pyGLV.GL.Textures import get_texture_faces
+from Elements.pyGLV.GL.Textures import Texture, get_texture_faces
 from Elements.pyGLV.GL.Textures import get_single_texture_faces
 
 from Elements.definitions import TEXTURE_DIR
@@ -25,8 +25,18 @@ You may see the ECS Scenegraph showing Entities & Components of the scene and \n
 various information about them. Hit ESC OR Close the window to quit." 
 
 
-winWidth = 1024
-winHeight = 768
+winWidth = 1920
+winHeight = 1080
+
+Lposition = util.vec(5.0, 2.0, 2.0) #uniform lightpos
+Lambientcolor = util.vec(1.0, 1.0, 1.0) #uniform ambient color
+Lambientstr = 0.2 #uniform ambientStr
+LviewPos = util.vec(2.5, 2.8, 5.0) #uniform viewpos
+Lcolor = util.vec(1.0,1.0,1.0)
+Lintensity = 0.8
+#Material
+Mshininess = 0.4 
+Mcolor = util.vec(0.8, 0.0, 0.8)
 
 eye = util.vec(1, 0.54, 1.0)
 target = util.vec(0.02, 0.14, 0.217)
@@ -43,10 +53,7 @@ scene.world.addEntityChild(rootEntity, skybox)
 transSkybox = scene.world.addComponent(skybox, BasicTransform(name="transSkybox", trs=util.identity())) #util.identity()
 meshSkybox = scene.world.addComponent(skybox, RenderMesh(name="meshSkybox"))
 
-node4 = scene.world.createEntity(Entity(name="node4"))
-scene.world.addEntityChild(rootEntity, node4)
-trans4 = scene.world.addComponent(node4, BasicTransform(name="trans4", trs=util.identity())) #util.identity()
-mesh4 = scene.world.addComponent(node4, RenderMesh(name="mesh4"))
+
 
 #Cube
 minbox = -30
@@ -90,6 +97,65 @@ indexCube = np.array((1,0,3, 1,3,2,
                   4,5,6, 4,6,7,
                   5,4,0, 5,0,1), np.uint32) 
 
+
+# Generate Sphere Vertices and Indices
+def generateSphere(radius, latitudeBands, longitudeBands):
+    vertices = []
+    indices = []
+    uvs = []
+
+    for lat in range(latitudeBands + 1):
+        theta = lat * np.pi / latitudeBands
+        sinTheta = np.sin(theta)
+        cosTheta = np.cos(theta)
+
+        for lon in range(longitudeBands + 1):
+            phi = lon * 2 * np.pi / longitudeBands
+            sinPhi = np.sin(phi)
+            cosPhi = np.cos(phi)
+
+            x = cosPhi * sinTheta
+            y = cosTheta
+            z = sinPhi * sinTheta
+
+            vertices.append([radius * x, radius * y, radius * z, 1.0])
+
+            u = lon / longitudeBands
+            v = 1 - (lat / latitudeBands)
+            uvs.append([u, v])
+
+            if lat < latitudeBands and lon < longitudeBands:
+                first = lat * (longitudeBands + 1) + lon
+                second = first + longitudeBands + 1
+
+                indices.append(first)
+                indices.append(second)
+                indices.append(first + 1)
+
+                indices.append(second)
+                indices.append(second + 1)
+                indices.append(first + 1)
+
+    return np.array(vertices, dtype=np.float32), np.array(indices, dtype=np.uint32), np.array(uvs, dtype=np.float32)
+
+
+vertexSphere, indexSphere, uvSphere = generateSphere(1.0, 20, 20)
+
+def addSphereToScene(name, position):
+    node = scene.world.createEntity(Entity(name=name))
+    scene.world.addEntityChild(rootEntity, node)
+    trans = scene.world.addComponent(node, BasicTransform(name=name + "_trans", trs=util.translate(*position)))
+    mesh = scene.world.addComponent(node, RenderMesh(name=name + "_mesh"))
+    
+    mesh.vertex_attributes.append(vertexSphere)
+    mesh.vertex_index.append(indexSphere)
+    
+    vArray = scene.world.addComponent(node, VertexArray())
+    shaderDec = scene.world.addComponent(node, ShaderGLDecorator(Shader(vertex_source = Shader.SIMPLE_TEXTURE_PHONG_VERT, fragment_source=Shader.SIMPLE_TEXTURE_PHONG_FRAG)))
+    
+    return node, trans, vArray, shaderDec, mesh
+
+
 # Systems
 transUpdate = scene.world.createSystem(TransformSystem("transUpdate", "TransformSystem", "001"))
 renderUpdate = scene.world.createSystem(RenderGLShaderSystem())
@@ -98,17 +164,16 @@ initUpdate = scene.world.createSystem(InitGLShaderSystem())
 
 vertexSkybox, indexSkybox, _ = norm.generateUniqueVertices(vertexSkybox,indexSkybox)
 
-vertexCube, indexCube, _ = norm.generateUniqueVertices(vertexCube,indexCube)
-
 meshSkybox.vertex_attributes.append(vertexSkybox)
 meshSkybox.vertex_index.append(indexSkybox)
 vArraySkybox = scene.world.addComponent(skybox, VertexArray())
 shaderSkybox = scene.world.addComponent(skybox, ShaderGLDecorator(Shader(vertex_source = Shader.STATIC_SKYBOX_VERT, fragment_source=Shader.STATIC_SKYBOX_FRAG)))
 
-mesh4.vertex_attributes.append(vertexCube)
-mesh4.vertex_index.append(indexCube)
-vArray4 = scene.world.addComponent(node4, VertexArray())
-shaderDec4 = scene.world.addComponent(node4, ShaderGLDecorator(Shader(vertex_source = Shader.TEXTURE_3D_VERT, fragment_source=Shader.TEXTURE_3D_FRAG)))
+_, _, _, normals = norm.generateFlatNormalsMesh(vertexSphere , indexSphere)
+earth, trans_earth, vArray_earth, shader_earth, mesh_earth = addSphereToScene("earth", [0.0, 0.0, 0.0])
+mesh_earth.vertex_attributes.append(normals)
+mesh_earth.vertex_attributes.append(uvSphere)
+sun, trans_sun, vArray_sun, shader_sun, mesh_sun = addSphereToScene("sun", [2.0, 0.0, 2.0])
 
 
 # MAIN RENDERING LOOP
@@ -144,23 +209,21 @@ projMat = util.perspective(50.0, 1.0, 0.01, 100.0)
 gWindow._myCamera = view # otherwise, an imgui slider must be moved to properly update
 
 # skybox_texture_locations = TEXTURE_DIR / "Skyboxes" / "Cloudy"
-skybox_texture_locations = TEXTURE_DIR / "Skyboxes" / "Sea"
-front_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Sea/front.jpg"
-right_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Sea/right.jpg"
-left_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Sea/left.jpg"
-back_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Sea/back.jpg"
-bottom_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Sea/bottom.jpg"
-top_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Sea/top.jpg"
+front_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/front.jpg"
+right_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/right.jpg"
+left_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/left.jpg"
+back_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/back.jpg"
+bottom_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/bottom.jpg"
+top_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/top.jpg"
 
  
 mat_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/earth.jpg"
 
 face_data = get_texture_faces(front_img,back_img,top_img,bottom_img,left_img,right_img)
-face_data_2 = get_single_texture_faces(mat_img)
+face_data_2 = Texture(mat_img)
 
 shaderSkybox.setUniformVariable(key='cubemap', value=face_data, texture3D=True)
-shaderDec4.setUniformVariable(key='ImageTexture', value=face_data_2, texture=True)
-
+shader_earth.setUniformVariable(key='ImageTexture', value=face_data_2, texture=True)
 
 while running:
     running = scene.render()
@@ -169,9 +232,16 @@ while running:
     
     view =  gWindow._myCamera # updates view via the imgui
 
-    shaderDec4.setUniformVariable(key='Proj', value=projMat, mat4=True)
-    shaderDec4.setUniformVariable(key='View', value=view, mat4=True)
-    shaderDec4.setUniformVariable(key='model', value=trans4.l2world, mat4=True)
+    shader_earth.setUniformVariable(key='Proj', value=projMat, mat4=True)
+    shader_earth.setUniformVariable(key='View', value=view, mat4=True)
+    shader_earth.setUniformVariable(key='model', value=trans_earth.l2world, mat4=True)
+    shader_earth.setUniformVariable(key='ambientColor',value=Lambientcolor,float3=True)
+    shader_earth.setUniformVariable(key='ambientStr',value=Lambientstr,float1=True)
+    shader_earth.setUniformVariable(key='viewPos',value=LviewPos,float3=True)
+    shader_earth.setUniformVariable(key='lightPos',value=Lposition,float3=True)
+    shader_earth.setUniformVariable(key='lightColor',value=Lcolor,float3=True)
+    shader_earth.setUniformVariable(key='lightIntensity',value=Lintensity,float1=True)
+    shader_earth.setUniformVariable(key='shininess',value=Mshininess,float1=True)
 
     shaderSkybox.setUniformVariable(key='Proj', value=projMat, mat4=True)
     shaderSkybox.setUniformVariable(key='View', value=view, mat4=True)

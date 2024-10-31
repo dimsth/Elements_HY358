@@ -233,7 +233,7 @@ model_terrain_axes = terrain.getChild(0).trs # notice that terrain.getChild(0) =
 # OR 
 # model_terrain_axes = util.translate(0.0,0.0,0.0) ## COMPLETELY OVERRIDE OBJECT's TRS
 
-texturePath = TEXTURE_DIR / "3x3.jpg"
+texturePath = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/3x3.jpg"
 texture = Texture(texturePath)
 shaderDec4.setUniformVariable(key='ImageTexture', value=texture, texture=True)
 # sphere_shader.setUniformVariable(key='ImageTexture', value=texture, texture=True)
