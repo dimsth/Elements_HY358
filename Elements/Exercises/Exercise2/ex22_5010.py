@@ -6,7 +6,7 @@ from Elements.pyECSS.Component import BasicTransform, Camera, RenderMesh
 from Elements.pyECSS.System import  TransformSystem, CameraSystem
 from Elements.pyGLV.GL.Scene import Scene
 from Elements.pyGLV.GUI.Viewer import RenderGLStateSystem, ImGUIecssDecorator
-
+import imgui
 from Elements.pyGLV.GL.Shader import InitGLShaderSystem, Shader, ShaderGLDecorator, RenderGLShaderSystem
 from Elements.pyGLV.GL.VertexArray import VertexArray
 import Elements.utils.normals as norm
@@ -28,8 +28,9 @@ various information about them. Hit ESC OR Close the window to quit."
 winWidth = 1920
 winHeight = 1080
 
-Lposition = util.vec(5.0, 2.0, 2.0) #uniform lightpos
+Lposition = util.vec(-2.0,1.5, 2.0) #uniform lightpos
 Lambientcolor = util.vec(1.0, 1.0, 1.0) #uniform ambient color
+translate_sun = Lposition[:3] * -1
 Lambientstr = 0.2 #uniform ambientStr
 LviewPos = util.vec(2.5, 2.8, 5.0) #uniform viewpos
 Lcolor = util.vec(1.0,1.0,1.0)
@@ -102,6 +103,7 @@ indexCube = np.array((1,0,3, 1,3,2,
 def generateSphere(radius, latitudeBands, longitudeBands):
     vertices = []
     indices = []
+    whiteColors = []
     uvs = []
 
     for lat in range(latitudeBands + 1):
@@ -117,6 +119,8 @@ def generateSphere(radius, latitudeBands, longitudeBands):
             x = cosPhi * sinTheta
             y = cosTheta
             z = sinPhi * sinTheta
+
+            whiteColors.append([1.0, 1.0, 1.0, 1.0])
 
             vertices.append([radius * x, radius * y, radius * z, 1.0])
 
@@ -136,12 +140,12 @@ def generateSphere(radius, latitudeBands, longitudeBands):
                 indices.append(second + 1)
                 indices.append(first + 1)
 
-    return np.array(vertices, dtype=np.float32), np.array(indices, dtype=np.uint32), np.array(uvs, dtype=np.float32)
+    return np.array(vertices, dtype=np.float32), np.array(indices, dtype=np.uint32), np.array(uvs, dtype=np.float32), np.array(whiteColors, dtype=np.float32) 
 
 
-vertexSphere, indexSphere, uvSphere = generateSphere(1.0, 20, 20)
+vertexSphere, indexSphere, uvSphere, colorSphere = generateSphere(1.0, 20, 20)
 
-def addSphereToScene(name, position):
+def addSphereToScene(name, position, vertex_src, frag_src):
     node = scene.world.createEntity(Entity(name=name))
     scene.world.addEntityChild(rootEntity, node)
     trans = scene.world.addComponent(node, BasicTransform(name=name + "_trans", trs=util.translate(*position)))
@@ -151,7 +155,7 @@ def addSphereToScene(name, position):
     mesh.vertex_index.append(indexSphere)
     
     vArray = scene.world.addComponent(node, VertexArray())
-    shaderDec = scene.world.addComponent(node, ShaderGLDecorator(Shader(vertex_source = Shader.SIMPLE_TEXTURE_PHONG_VERT, fragment_source=Shader.SIMPLE_TEXTURE_PHONG_FRAG)))
+    shaderDec = scene.world.addComponent(node, ShaderGLDecorator(Shader(vertex_source = vertex_src, fragment_source=frag_src)))
     
     return node, trans, vArray, shaderDec, mesh
 
@@ -170,13 +174,15 @@ vArraySkybox = scene.world.addComponent(skybox, VertexArray())
 shaderSkybox = scene.world.addComponent(skybox, ShaderGLDecorator(Shader(vertex_source = Shader.STATIC_SKYBOX_VERT, fragment_source=Shader.STATIC_SKYBOX_FRAG)))
 
 _, _, _, normals = norm.generateFlatNormalsMesh(vertexSphere , indexSphere)
-earth, trans_earth, vArray_earth, shader_earth, mesh_earth = addSphereToScene("earth", [0.0, 0.0, 0.0])
+earth, trans_earth, vArray_earth, shader_earth, mesh_earth = addSphereToScene("earth", [0.0, 0.0, 0.0], Shader.SIMPLE_TEXTURE_PHONG_VERT, Shader.SIMPLE_TEXTURE_PHONG_FRAG)
 mesh_earth.vertex_attributes.append(normals)
 mesh_earth.vertex_attributes.append(uvSphere)
-sun, trans_sun, vArray_sun, shader_sun, mesh_sun = addSphereToScene("sun", [2.0, 0.0, 2.0])
+
+sun, trans_sun, vArray_sun, shader_sun, mesh_sun = addSphereToScene("sun", translate_sun, Shader.COLOR_VERT_MVP, Shader.COLOR_FRAG)
+mesh_sun.vertex_attributes.append(colorSphere)
 
 
-# MAIN RENDERING LOOP
+# MAIN RENDERIShader.COLOR_FRAGNG LOOP
 
 running = True
 scene.init(imgui=True, windowWidth = winWidth, windowHeight = winHeight, windowTitle = "Elements: Cube Mapping Example", customImGUIdecorator = ImGUIecssDecorator, openGLversion = 4)
@@ -209,15 +215,15 @@ projMat = util.perspective(50.0, 1.0, 0.01, 100.0)
 gWindow._myCamera = view # otherwise, an imgui slider must be moved to properly update
 
 # skybox_texture_locations = TEXTURE_DIR / "Skyboxes" / "Cloudy"
-front_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/front.jpg"
-right_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/right.jpg"
-left_img =  "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/left.jpg"
-back_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/back.jpg"
-bottom_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/bottom.jpg"
-top_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/Skyboxes/Stars/top.jpg"
+front_img =  "Elements/files/textures/Skyboxes/Stars/front.jpg"
+right_img =  "Elements/files/textures/Skyboxes/Stars/right.jpg"
+left_img =  "Elements/files/textures/Skyboxes/Stars/left.jpg"
+back_img = "Elements/files/textures/Skyboxes/Stars/back.jpg"
+bottom_img = "Elements/files/textures/Skyboxes/Stars/bottom.jpg"
+top_img = "Elements/files/textures/Skyboxes/Stars/top.jpg"
 
  
-mat_img = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/earth.jpg"
+mat_img = "Elements/files/textures/earth.jpg"
 
 face_data = get_texture_faces(front_img,back_img,top_img,bottom_img,left_img,right_img)
 face_data_2 = Texture(mat_img)
@@ -225,10 +231,26 @@ face_data_2 = Texture(mat_img)
 shaderSkybox.setUniformVariable(key='cubemap', value=face_data, texture3D=True)
 shader_earth.setUniformVariable(key='ImageTexture', value=face_data_2, texture=True)
 
+def Lightscreen():
+    global Lposition
+
+    imgui.begin("Light")
+
+    change, Lposition = imgui.drag_float3(
+        "Position", *Lposition
+    )
+
+    imgui.end()
+
+    return change
+
+model_sun = projMat @ view @ trans_sun.trs
+
 while running:
     running = scene.render()
     displayGUI_text(example_description)
     scene.world.traverse_visit(transUpdate, scene.world.root)
+    change = Lightscreen()
     
     view =  gWindow._myCamera # updates view via the imgui
 
@@ -242,6 +264,12 @@ while running:
     shader_earth.setUniformVariable(key='lightColor',value=Lcolor,float3=True)
     shader_earth.setUniformVariable(key='lightIntensity',value=Lintensity,float1=True)
     shader_earth.setUniformVariable(key='shininess',value=Mshininess,float1=True)
+
+    if change:
+        model_sun = util.translate(*Lposition)
+
+    mvp_sun = projMat @ view @ model_sun
+    shader_sun.setUniformVariable(key='modelViewProj', value=mvp_sun, mat4=True)
 
     shaderSkybox.setUniformVariable(key='Proj', value=projMat, mat4=True)
     shaderSkybox.setUniformVariable(key='View', value=view, mat4=True)
