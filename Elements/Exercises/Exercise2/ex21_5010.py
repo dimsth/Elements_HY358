@@ -20,7 +20,7 @@ from Elements.utils.Shortcuts import displayGUI_text
 example_description = \
 "This is a scene with 2 cube, a trinagle and house." 
 
-FRAG_PHONG_WITH_DIFFUSE = """
+FRAG_PHONG_MATERIAL_WITH_DIFFUSE = """
         #version 410
 
         in vec4 pos;
@@ -54,16 +54,14 @@ FRAG_PHONG_WITH_DIFFUSE = """
 
             // Ambient
             vec3 ambientProduct = ambientStr * ambientColor;
-
             // Diffuse
             float diffuseStr = max(dot(norm, lightDir), 0.0);
-            vec3 diffuseProduct = diffuseStr * lightColor * diffuseColor;
-
+            vec3 diffuseProduct = diffuseStr * lightColor;
             // Specular
             float specularStr = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-            vec3 specularProduct = shininess * specularStr * matColor;
+            vec3 specularProduct = shininess * specularStr * color.xyz * diffuseColor;
             
-            vec3 result = (ambientProduct + (diffuseProduct + specularProduct) * lightIntensity) * color.xyz;
+            vec3 result = (ambientProduct + (diffuseProduct + specularProduct) * lightIntensity) * matColor;
             outputColor = vec4(result, 1);
         }
     """
@@ -167,7 +165,7 @@ def addObjectToScene(name, vertecies, index, colorArray, position, addAsChild=Tr
     mesh.vertex_index.append(indices)
     
     vArray = scene.world.addComponent(node, VertexArray())
-    shaderDec = scene.world.addComponent(node, ShaderGLDecorator(Shader(vertex_source = Shader.VERT_PHONG_MVP, fragment_source=FRAG_PHONG_WITH_DIFFUSE)))
+    shaderDec = scene.world.addComponent(node, ShaderGLDecorator(Shader(vertex_source = Shader.VERT_PHONG_MVP, fragment_source=FRAG_PHONG_MATERIAL_WITH_DIFFUSE)))
     
     return node, trans, vArray, shaderDec, mesh
 
@@ -300,7 +298,7 @@ model_cube = trans4.trs
 model_tri = trans_tri.trs
 model_cube2 = trans_cube2.trs
 
-def setLightOnShader(shader, mvp, model):
+def setLightOnShader(shader, mvp, model, color):
     global Lambientcolor, Lambientstr, LviewPos, Lposition, Lcolor, Lintensity, Mshininess, Mcolor, Mdiffuse
     
     try:
@@ -313,7 +311,7 @@ def setLightOnShader(shader, mvp, model):
         shader.setUniformVariable(key='lightColor', value=Lcolor, float3=True)
         shader.setUniformVariable(key='lightIntensity', value=Lintensity, float1=True)
         shader.setUniformVariable(key='shininess', value=Mshininess, float1=True)
-        shader.setUniformVariable(key='matColor', value=Mcolor, float3=True)
+        shader.setUniformVariable(key='matColor', value=color, float3=True)
         shader.setUniformVariable(key='diffuseColor', value=Mdiffuse, float3=True)
     except Exception as e:
         print(f"Error setting shader uniforms: {e}")
@@ -342,13 +340,13 @@ while running:
     view =  gWindow._myCamera
 
     mvp_cube = projMat @ view @ model_cube
-    setLightOnShader(shaderDec4, mvp_cube, model_cube)
+    setLightOnShader(shaderDec4, mvp_cube, model_cube, cube1_color[:3])
 
     mvp_tri = projMat @ view @ model_tri
-    setLightOnShader(shaderDec_tri, mvp_tri, model_tri)
+    setLightOnShader(shaderDec_tri, mvp_tri, model_tri, pyramid_color[:3])
     
     mvp_cube2 = projMat @ view @ model_cube2
-    setLightOnShader(shaderDec_cube2, mvp_cube2, model_cube2)
+    setLightOnShader(shaderDec_cube2, mvp_cube2, model_cube2, cube2_color[:3])
 
     scene.render_post()
     
