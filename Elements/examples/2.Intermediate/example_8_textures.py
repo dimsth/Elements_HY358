@@ -191,7 +191,7 @@ model_terrain_axes = terrain.getChild(0).trs # notice that terrain.getChild(0) =
 # OR 
 # model_terrain_axes = util.translate(0.0,0.0,0.0) ## COMPLETELY OVERRIDE OBJECT's TRS
 
-texturePath = TEXTURE_DIR / "uoc_logo.png"
+texturePath = "/home/exelixis_desk/358_exercises/Elements_HY358/Elements/files/textures/earth.jpg"
 texture = Texture(texturePath)
 shaderDec4.setUniformVariable(key='ImageTexture', value=texture, texture=True)
 
@@ -205,8 +205,10 @@ while running:
     mvp_terrain = projMat @ view @ terrain_trans.l2world
     mvp_axes = projMat @ view @ axes_trans.l2world
     model_cube = trans4.l2world
+    
     axes_shader.setUniformVariable(key='modelViewProj', value=mvp_axes, mat4=True)
     terrain_shader.setUniformVariable(key='modelViewProj', value=mvp_terrain, mat4=True)
+
     shaderDec4.setUniformVariable(key='model', value=model_cube, mat4=True)
     shaderDec4.setUniformVariable(key='View', value=view, mat4=True)
     shaderDec4.setUniformVariable(key='Proj', value=projMat, mat4=True)
