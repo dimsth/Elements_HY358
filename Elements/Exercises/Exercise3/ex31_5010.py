@@ -17,7 +17,7 @@ from Elements.pyGLV.GL.Scene import Scene
 ##########################################################
 #########################################################
 
-NumVertices     = 100
+NumVertices     = 200
 index_pyr       = 0
 
 points = np.arange(NumVertices * 4, dtype=np.float32)
@@ -136,56 +136,19 @@ joint_weights = np.array([
     (0, 0, 1.0),    #12
 ], dtype=np.float32)
 """
-joint_weights = np.array([
-    (1.0, 1.0, 1.0),    #0
-    (1.0, 1.0, 1.0),    #1
-    (1.0, 1.0, 1.0),    #2
-    (1.0, 1.0, 1.0),    #3
-    (1.0, 1.0, 1.0),    #4
-    (1.0, 1.0, 1.0),    #5
-    (1.0, 1.0, 1.0),    #6
-    (1.0, 1.0, 1.0),    #7
-    (1.0, 1.0, 1.0),    #8
-    (1.0, 1.0, 1.0),    #9
-    (1.0, 1.0, 1.0),    #10
-    (1.0, 1.0, 1.0),    #11
-    (1.0, 1.0, 1.0),    #12
-    (1.0, 1.0, 1.0),    #0
-    (1.0, 1.0, 1.0),    #1
-    (1.0, 1.0, 1.0),    #2
-    (1.0, 1.0, 1.0),    #3
-    (1.0, 1.0, 1.0),    #4
-    (1.0, 1.0, 1.0),    #5
-    (1.0, 1.0, 1.0),    #6
-], dtype=np.float32)
+joints = np.array([
+    [0.0, 0.0, 0.0],  # Joint 0
+    [0.0, 1.0, 0.0],  # Joint 1
+    [0.0, 2.0, 0.0]   # Joint 2
+])
 
-    
+# Compute weights for each vertex
+joint_weights = np.zeros((len(vertices), 3), dtype=np.float32)
 
-#index arrays for above vertex Arrays
-indexCube = np.array((0, 1, 5,  0, 5, 4,
-1, 3, 7,  1, 7, 5,
-3, 2, 6,  3, 6, 7,
-2, 0, 4,  2, 4, 6,
-
-4, 5, 9,  4, 9, 8,
-5, 7, 11, 5, 11, 9,
-7, 6, 10, 7, 10, 11,
-6, 4, 8,  6, 8, 10,
-
-8, 9, 13, 8, 13, 12,
-9, 11, 15, 9, 15, 13,
-11, 10, 14, 11, 14, 15,
-10, 8, 12, 10, 12, 14,
-
-12, 13, 17, 12, 17, 16,
-13, 15, 19, 13, 19, 17,
-15, 14, 18, 15, 18, 19,
-14, 12, 16, 14, 16, 18,
-
-0, 1, 3,  0, 3, 2,
-16, 17, 19, 16, 19, 18), np.uint32)
-
-
+for i, vertex in enumerate(vertices[:, :3]):  # Ignore the w component
+    distances = np.linalg.norm(vertex - joints, axis=1)  # Compute distances to all joints
+    inverse_distances = 1.0 / distances  # Compute inverse distances
+    joint_weights[i] = inverse_distances / np.sum(inverse_distances)
 
 def quad(a, b, c, d):
     """create a quad out of four coordinates
@@ -228,85 +191,79 @@ def tri(a, b, c):
     index_pyr += 1
 
 def initCandle():
-    """
-    initialises basic vertices, colors and builds index number
-    """
+    # First cube (base)
+    quad(0, 1, 5, 4)  # Front face
+    quad(1, 3, 7, 5)  # Right face
+    quad(3, 2, 6, 7)  # Back face
+    quad(2, 0, 4, 6)  # Left face
+    quad(4, 5, 7, 6)  # Top face
+    quad(0, 1, 3, 2)  # Bottom face
 
-    # build up the faces
-    quad(1, 0, 3, 2)
-    quad(2, 3, 7, 6)
-    quad(3, 0, 4, 7)
-    quad(4, 5, 6, 7)
-    quad(5, 4, 0, 1)
+    # Second cube (stacked on the first)
+    quad(4, 5, 9, 8)  # Front face
+    quad(5, 7, 11, 9)  # Right face
+    quad(7, 6, 10, 11)  # Back face
+    quad(6, 4, 8, 10)  # Left face
+    quad(8, 9, 11, 10)  # Top face
 
-    # second level
-    quad(9, 8, 1, 2)
-    quad(11, 10, 5, 6)
+    # Third cube (stacked on the second)
+    quad(8, 9, 13, 12)  # Front face
+    quad(9, 11, 15, 13)  # Right face
+    quad(11, 10, 14, 15)  # Back face
+    quad(10, 8, 12, 14)  # Left face
+    quad(12, 13, 15, 14)  # Top face
 
-    quad(11, 9, 2, 6)
-    quad(10, 8, 1, 5)
+    # Fourth cube (stacked on the third)
+    quad(12, 13, 17, 16)  # Front face
+    quad(13, 15, 19, 17)  # Right face
+    quad(15, 14, 18, 19)  # Back face
+    quad(14, 12, 16, 18)  # Left face
+    quad(16, 17, 19, 18)  # Top face
 
-    #the cap
-    tri(8, 9, 12)
-    tri(9, 11, 12)
-    tri(10, 11, 12)
-    tri(8, 10, 12)
+angle_joint1 = 0.0
+angle_joint2 = 0.0
+angle_joint3 = 0.0
+animation = False
+frame = 0
 
-
-angle_to_be_moved=20.0
 def displayGUI():
-    global angle_to_be_moved
-    imgui.begin("TRS")
-    changed_c1_1, angle_to_be_moved = imgui.drag_float(
-        "Angle", angle_to_be_moved, change_speed=0.1)
+    global angle_joint1, angle_joint2, angle_joint3
+    global animation
+    global frame
+    imgui.begin("Joint Controls")
+    _, angle_joint1 = imgui.drag_float("Joint 1 Angle", angle_joint1, 0.1)
+    _, angle_joint2 = imgui.drag_float("Joint 2 Angle", angle_joint2, 0.1)
 
-    #clicked, showAxes = imgui.checkbox("Show Axes", showAxes)
+    if imgui.checkbox("Animation", animation)[0]:
+        if not animation:
+            frame = 0
+        animation = not animation
 
     imgui.end()
 
 def displayCandle(candle_shader):
-    """
-    Uses the previously created shader program, binds the VAO on the client side and renders the cube using triangles
-    """
-
-    global view, projMat
+    global view, projMat, angle_joint1, angle_joint2, angle_joint3
 
     M0 = util.identity()
-    M1 = util.translate(0.5)
-    M2 = util.translate(0.5)
+    M1 = util.translate(0, 1, 0)
+    M2 = util.translate(0, 2, 0)
 
-    B0 = M0
-    B1 = M0 @ M1
-    B2 = M0 @ M1 @ M2
-
-    B0_inv = np.linalg.inv(B0)
-    B1_inv = np.linalg.inv(B1)
-    B2_inv = np.linalg.inv(B2)
+    B0_inv = np.linalg.inv(M0)
+    B1_inv = np.linalg.inv(M1)
+    B2_inv = np.linalg.inv(M2)
 
     M0_prime = util.identity()
-    M1_prime = util.translate(0.5) @ util.rotate(axis=util.vec(1, 0, 1), angle=10+angle_to_be_moved)
-    M2_prime = util.translate(0.5) @ util.rotate(axis=util.vec(0, 1, 0), angle=45)
-
-    """
-    M0_prime = util.identity()
-    M1_prime = util.translate(-0.5) @ util.rotate(axis=util.vec(1, 0, 1), angle=10)
-    M2_prime = util.translate(-0.5) @ util.rotate(axis=util.vec(0, 1, 0), angle=45)
-    """
-
-    B0_prime = M0_prime
-    B1_prime = M0_prime @ M1_prime
-    B2_prime = M0_prime @ M1_prime @ M2_prime
-
+    M1_prime = util.translate(0, 1, 0) @ util.rotate(axis=util.vec(1, 0, 0), angle=angle_joint1)
+    M2_prime = util.translate(0, 2, 0) @ util.rotate(axis=util.vec(0, 1, 0), angle=angle_joint2)
 
     model = util.scale(0.5)
 
-    candle_shader.setUniformVariable(key='M0', value=B0_prime @ B0_inv, mat4=True)
-    candle_shader.setUniformVariable(key='M1', value=B1_prime @ B1_inv, mat4=True)
-    candle_shader.setUniformVariable(key='M2', value=B2_prime @ B2_inv, mat4=True)
+    candle_shader.setUniformVariable(key='M0', value=M0_prime @ B0_inv, mat4=True)
+    candle_shader.setUniformVariable(key='M1', value=M1_prime @ B1_inv, mat4=True)
+    candle_shader.setUniformVariable(key='M2', value=M2_prime @ B2_inv, mat4=True)
     candle_shader.setUniformVariable(key='model', value=model, mat4=True)
     candle_shader.setUniformVariable(key='view', value=view, mat4=True)
     candle_shader.setUniformVariable(key='projection', value=projMat, mat4=True)
-
 
 
 winWidth = 1920
@@ -338,10 +295,8 @@ initCandle()
 candle_mesh.vertex_attributes.append(points)
 candle_mesh.vertex_attributes.append(colors)
 candle_mesh.vertex_attributes.append(weights)
-# indexCube = np.array((range(index_pyr)), np.uint32) 
+indexCube = np.array((range(index_pyr)), np.uint32) 
 candle_mesh.vertex_index.append(indexCube)
-
-angle_to_be_moved=20.0
 
 # MAIN RENDERING LOOP
 running = True
@@ -392,8 +347,26 @@ while running:
     view =  gWindow._myCamera
     scene.world.traverse_visit(transUpdate, scene.world.root) 
     running = scene.render()
-    
-    # displayCandle(candle_shader)
+
+    if not animation:
+        displayCandle(candle_shader)
+    else:
+        if frame == 0 :
+            angle_joint1 = 0.0
+            angle_joint2 = 0.0
+        elif frame < 85:
+            angle_joint1+=0.5
+        elif frame < 170:
+            angle_joint2+=1.0
+        elif frame < 255:
+            angle_joint2-=1.0
+        elif frame < 340:
+            angle_joint1-=0.5
+            frame = -1
+
+        frame+=1
+        displayCandle(candle_shader)
+
     displayGUI()
     view =  gWindow._myCamera
     scene.world.traverse_visit(renderUpdate, scene.world.root)
